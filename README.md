@@ -10,12 +10,12 @@ MS-Teams Group: [Advent of Code](https://teams.microsoft.com/l/channel/19%3avMLU
 
 ## Join Advent of Code
 
-1. Join **Advent of Code** [here](https://adventofcode.com/2022/auth/login)
+1. Join **Advent of Code** [here](https://adventofcode.com/2023/auth/login)
    * The **AoC** site is not connected to Telekom, so you will need a personal account - joining is free.
    * You can join with a personal Github, Twitter, etc. account of your choice .
 2. Join our Team's **Private Leaderboard**
-   * Open [Private Leaderboard join page](https://adventofcode.com/2022/leaderboard/private) and use code `1395439-f1ff3ae9` to join the private leaderboard.
-   * Join Once joined, you can see the private leaderboard here: https://adventofcode.com/2022/leaderboard/private/view/1395439
+   * Open [Private Leaderboard join page](https://adventofcode.com/2023/leaderboard/private) and use code `1395439-f1ff3ae9` to join the private leaderboard.
+   * Join Once joined, you can see the private leaderboard here: https://adventofcode.com/2023/leaderboard/private/view/1395439
 
 ## Setting up your Development Environment
 
@@ -33,7 +33,7 @@ Choose a language you would like to learn. If you have no idea at all which one 
 
 For the interested, there are some interesting background links
 
-* [Advent of Code 2022](https://app.powerbi.com/view?r=eyJrIjoiZTQ3OTlmNDgtYmZlMS00ZTJmLTkwYTgtMWQyMTkxNWI5NGM1IiwidCI6IjQwOTEzYjA4LTQyZTYtNGMxOS05Y2FiLTRmOWZlM2U0YzJmZCIsImMiOjl9)
+* [Advent of Code 2023](https://app.powerbi.com/view?r=eyJrIjoiZTQ3OTlmNDgtYmZlMS00ZTJmLTkwYTgtMWQyMTkxNWI5NGM1IiwidCI6IjQwOTEzYjA4LTQyZTYtNGMxOS05Y2FiLTRmOWZlM2U0YzJmZCIsImMiOjl9)
 * [Google Trends](https://trends.google.com/trends/explore?q=java,c%23,python,typescript,javascript)
 
 ## How to Work with Git/Gitlab
@@ -52,7 +52,7 @@ If you need a primer, please ask [Michael](mailto:michael-harald.weber@telekom.d
    * Create a folder within the day's task folder with your name (i.e. `exercises/day01/yourname`), and create any code within that folder. This folder will be uploaded later, your name identifies your solution for the task.
    * Write your cool code in the language of your choice in your named folder created in the previous step.
    * Once you are happy with the result, submit your answer for the day's task to [Advent of Code](https://adventofcode.com). Don't forget to complete the second part of the solution to get the *stars* ⭐️ for the day!
-   * Check your score in the [Private Leaderboard](https://adventofcode.com/2022/leaderboard/private/view/1395439) 🖖 💪
+   * Check your score in the [Private Leaderboard](https://adventofcode.com/2023/leaderboard/private/view/1395439) 🖖 💪
    * Share your code with the team, as explained in the next steps! 👍 ⭐️
 4. **Commit** and **Push** your code to your fork. <br/>*This is just a fancy way of saying uploading your changes back to your Gitlab forked project.*
 5. **Merge your changes** with the original repo. Explained on the aforementioned link.<br/>*This is a fancy way of saying sharing your code back to the original repository to share your contributions.*.
@@ -63,4 +63,4 @@ If you need a primer, please ask [Michael](mailto:michael-harald.weber@telekom.d
 **Don't panic!**
 
 You can always talk to your best friend on the Internet: https://www.google.de
-And if you really want to, you can contact [Michael](mailto:michael-harald.weber@telekom.de), [Feri](mailto:ferenc.hechler@telekom.de), [Carlos](mailto:carlos.lozano-diez@telekom.de), [Christian](mailto:christian.sledz@telekom.de) if you are stuck with any of the above.
+And if you really want to, you can contact [Michael](mailto:michael-harald.weber@telekom.de), [Feri](mailto:ferenc.hechler@telekom.de), [Christian](mailto:christian.sledz@telekom.de) if you are stuck with any of the above.
