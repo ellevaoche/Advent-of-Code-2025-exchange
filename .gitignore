@@ -7,3 +7,4 @@ exercises/day03/carlos/Day03
 /.settings/
 /.idea/
 /out/
+*.iml
