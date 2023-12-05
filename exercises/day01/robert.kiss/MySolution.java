@@ -58,7 +58,7 @@ public class MySolution extends MySolutionBase {
 			});
 			values.add(10*(cc[0]-48)+cc[1]-48);
 		});
-		System.out.println("play2a: " + values);
+		//System.out.println("play2a: " + values);
 		System.out.println("play2a: " + values.stream().mapToInt(Integer::intValue).sum());
         return this;
 	}
@@ -78,18 +78,20 @@ public class MySolution extends MySolutionBase {
 		return this.myStrToIntMap.containsKey(str) ? this.myStrToIntMap.get(str) : Integer.parseInt(str);
 
 	}
-	private Pattern myPattern = Pattern.compile("([0-9]|one|two|three|four|five|six|seven|eight|nine).*([0-9]|one|two|three|four|five|six|seven|eight|nine)");
+	private Pattern myPattern1 = Pattern.compile("([0-9]|one|two|three|four|five|six|seven|eight|nine).*");
+	private Pattern myPattern2 = Pattern.compile(".*([0-9]|one|two|three|four|five|six|seven|eight|nine)");
 
 	private MySolution play2b() {
 		List<Integer> values = new ArrayList<Integer>();
 		getInputLinesAsList().forEach(line -> {
-			var mymatcher = myPattern.matcher(line);
-			if (mymatcher.find()) {
+			var mymatcher1 = myPattern1.matcher(line);
+			var mymatcher2 = myPattern2.matcher(line);
+			if (mymatcher1.find() && mymatcher2.find()) {
 				//System.out.println(mymatcher.group(0) + " -> " + mymatcher.group(1) + "  " + mymatcher.group(2));
-				values.add( 10*myStrToInt(mymatcher.group(1)) + myStrToInt(mymatcher.group(2)));
+				values.add( 10*myStrToInt(mymatcher1.group(1)) + myStrToInt(mymatcher2.group(1) ));
 			}
 		});
-		System.out.println("play2b: " + values);
+		//System.out.println("play2b: " + values);
 		System.out.println("play2b: " + values.stream().mapToInt(Integer::intValue).sum());
         return this;
 	}
