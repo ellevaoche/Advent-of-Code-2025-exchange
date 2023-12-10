@@ -160,7 +160,7 @@ public class Y23Day10 {
 		}
 		public boolean tick() {
 			ticks++;
-			System.out.println("MOVE "+currentPos+" "+DIRS.charAt(dir));
+//			System.out.println("MOVE "+currentPos+" "+DIRS.charAt(dir));
 			previousPos = currentPos;
 			currentPos = currentPos.move(dir);
 			path.add(currentPos);
@@ -176,10 +176,7 @@ public class Y23Day10 {
 			do {
 				int fillDir = rot(dir, fillRot);
 				Pos fillPos = currentPos.move(fillDir);
-				System.out.println("AT "+currentPos+" "+getRoad(currentPos)+" "+DIRS.charAt(dir)+" CHECKING "+fillPos);
-				if (currentPos.toString().equals("(20,21)")) {
-					System.out.println("BREAK");
-				}
+//				System.out.println("AT "+currentPos+" "+getRoad(currentPos)+" "+DIRS.charAt(dir)+" CHECKING "+fillPos);
 				if (!fill.contains(fillPos)) {
 					System.out.println("ADDING "+fillPos);
 					if (!fillField(fillPos)) {
@@ -189,14 +186,15 @@ public class Y23Day10 {
 				if (!fillPos.equals(previousPos)) {
 					int fillDir2 = rot(fillDir, fillRot);
 					Pos fillPos2 = currentPos.move(fillDir2);
-					System.out.println("AT "+currentPos+" "+getRoad(currentPos)+" "+DIRS.charAt(dir)+" CHECKING2 "+fillPos2);
+//					System.out.println("AT "+currentPos+" "+getRoad(currentPos)+" "+DIRS.charAt(dir)+" CHECKING2 "+fillPos2);
 					if (!fill.contains(fillPos2)) {
-						System.out.println("ADDING "+fillPos2);
+//						System.out.println("ADDING "+fillPos2);
 						if (!fillField(fillPos2)) {
 							return -1;
 						}
 					}
 				}
+				show();
 			} while (tick());
 			return fill.size() - path.size();
 		}
@@ -207,7 +205,7 @@ public class Y23Day10 {
 			if ((fillPos.x<-3) || (fillPos.y<-3) || (fillPos.x>maxX+2) || (fillPos.y>maxY+2)) {
 				return false;
 			}
-			System.out.println("  ADD "+fillPos);
+//			System.out.println("  ADD "+fillPos);
 			fill.add(fillPos);
 			List<Pos> neighbourPositions = fillPos.neighbours();
 			for (Pos neighbourPos:neighbourPositions) {
@@ -224,11 +222,15 @@ public class Y23Day10 {
 				for (int x=0; x<maxX; x++) {
 					char c = getRoad(x, y);
 					String color = "b0";
-					if (fill.contains(new Pos(x,y))) {
+					Pos pos = new Pos(x,y);
+					if (fill.contains(pos)) {
 						color = "bred";
 					}
-					if (path.contains(new Pos(x,y))) {
+					if (path.contains(pos)) {
 						color = "byellow";
+					}
+					if (pos.equals(currentPos) || pos.equals(previousPos)) {
+						color = "bblack";
 					}
 					if (!lastColor.equals(color)) {
 						lastColor = color;
@@ -295,12 +297,12 @@ public class Y23Day10 {
 //		}
 
 		
-		cnt = world.countInnerFields(DIR_ROT_LEFT);
+		cnt = world.countInnerFields(DIR_ROT_RIGHT);
 		System.out.println("CNT: "+cnt);
 		world.show();
 		if (cnt == -1) {
 			System.out.println("LEFT RETURNED -1, TRYING RIGHT");
-			cnt = world.countInnerFields(DIR_ROT_RIGHT);
+			cnt = world.countInnerFields(DIR_ROT_LEFT);
 		}
 		System.out.println("INNER FIELDS: "+cnt);
 	}
