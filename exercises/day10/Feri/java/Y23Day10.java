@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -113,6 +114,7 @@ public class Y23Day10 {
 		int maxX;
 		int maxY;
 		Pos startPos;
+		Pos previousStartPos;
 		int startDir;
 		Pos currentPos;
 		Pos previousPos;
@@ -126,6 +128,7 @@ public class Y23Day10 {
 			this.field = new ArrayList<>();
 			this.ticks = 0;
 			this.path = new LinkedHashSet<>();
+			this.fill = Collections.emptySet();
 		}
 		public char getRoad(Pos pos) {
 			return getRoad(pos.x, pos.y);
@@ -155,6 +158,19 @@ public class Y23Day10 {
 					break;
 				}
 			}
+			for (dir = DIR_EAST; dir<=DIR_NORTH; dir++) {
+				if (dir == startDir) {
+					continue;
+				}
+				char road = getRoad(startPos.move(dir));
+				if (nextDir(dir, road) != -1) {
+					int previousDir = dir;
+					previousStartPos = startPos.move(previousDir);
+					previousPos = previousStartPos;
+					break;
+				}
+			}
+			path.add(startPos);
 		}
 		
 		public boolean reachedStart() {
@@ -174,7 +190,7 @@ public class Y23Day10 {
 			fill = new LinkedHashSet<>(path);
 			dir = startDir;
 			currentPos = startPos;
-			previousPos = currentPos;
+			previousPos = previousStartPos;
 			do {
 				int fillDir = rot(dir, fillRot);
 				Pos fillPos = currentPos.move(fillDir);
@@ -223,8 +239,8 @@ public class Y23Day10 {
 		public void show() {
 			StringBuilder result = new StringBuilder();
 			String lastColor = "b0";
-			for (int y=0; y<maxY; y++) {
-				for (int x=0; x<maxX; x++) {
+			for (int y=-2; y<maxY+2; y++) {
+				for (int x=-2; x<maxX+2; x++) {
 					char c = getRoad(x, y);
 					String color = "b0";
 					Pos pos = new Pos(x,y);
@@ -269,6 +285,7 @@ public class Y23Day10 {
 	}
 	
 	public static void mainPart1(String inputFile) {
+		output = new Y23GUIOutput10("2023 Day 10 Part I", true);
 		World world = new World();
 		for (InputData data:new InputProcessor(inputFile)) {
 			System.out.println(data);
@@ -277,8 +294,10 @@ public class Y23Day10 {
 		world.initStartDir();
 		world.tick();
 		while (!world.reachedStart()) {
+			world.show();
 			world.tick();
 		}
+		world.show();
 		System.out.println("ticks="+world.ticks);
 		System.out.println("MAX_DIST: "+world.ticks/2);
 	}
@@ -307,12 +326,13 @@ public class Y23Day10 {
 //		}
 
 		
-		cnt = world.countInnerFields(DIR_ROT_RIGHT);
+		cnt = world.countInnerFields(DIR_ROT_LEFT);
 		System.out.println("CNT: "+cnt);
 		world.show();
 		if (cnt == -1) {
 			System.out.println("LEFT RETURNED -1, TRYING RIGHT");
-			cnt = world.countInnerFields(DIR_ROT_LEFT);
+			cnt = world.countInnerFields(DIR_ROT_RIGHT);
+			world.show();
 		}
 		System.out.println("INNER FIELDS: "+cnt);
 	}
@@ -321,14 +341,14 @@ public class Y23Day10 {
 
 	public static void main(String[] args) throws FileNotFoundException {
 		System.out.println("--- PART I ---");
-//		mainPart1("exercises/day10/Feri/input-example.txt");
+		mainPart1("exercises/day10/Feri/input-example.txt");
 //		mainPart1("exercises/day10/Feri/input.txt");               
 		System.out.println("---------------");                           
 		System.out.println("--- PART II ---");
-//		mainPart2("exercises/day10/Feri/input-example-2.txt");
+		mainPart2("exercises/day10/Feri/input-example-2.txt");
 //		mainPart2("exercises/day10/Feri/input-example-3.txt");
 //		mainPart2("exercises/day10/Feri/input-example-4.txt");
-		mainPart2("exercises/day10/Feri/input.txt");            // > 300          
+//		mainPart2("exercises/day10/Feri/input.txt");                      
 		System.out.println("---------------");    //
 	}
 	
