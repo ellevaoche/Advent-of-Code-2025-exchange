@@ -230,6 +230,8 @@ public class Y23Day16 {
 			if (history.contains(result)) {
 				return null;
 			}
+			char c = get(beam.pos);
+			
 			set(beam.pos, DIRS.charAt(beam.dir));
 			history.add(result);
 			return result;

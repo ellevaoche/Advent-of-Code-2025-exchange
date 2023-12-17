@@ -1,7 +1,10 @@
+
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -86,10 +89,10 @@ public class Y23Day12 {
 		}
 		public long countSolutions(int[] groups) {
 			this.groups = groups;
-			return recursiveCountSolutions(0, 0, 0, "");
+			return recursiveCountSolutions(0, 0, 0);
 		}
 
-		protected long recursiveCountSolutions(int patternPos, int groupPos, int cntLastGroup, String debugging) {
+		protected long recursiveCountSolutions(int patternPos, int groupPos, int cntLastGroup) {
 			if (patternPos == pattern.length) {
 				if ((groupPos == groups.length) && (cntLastGroup==0)) {
 //					System.out.println(debugging);
@@ -104,19 +107,16 @@ public class Y23Day12 {
 			char c = pattern[patternPos];
 			long result = 0;
 			if (c == '?') {
-				String debDot = debugging+'.';
-				String debHash = debugging+'#';
-				result = recursiveCountSolutions('.', patternPos, groupPos, cntLastGroup, debDot);
-				result += recursiveCountSolutions('#', patternPos, groupPos, cntLastGroup, debHash);
+				result = recursiveCountSolutions('.', patternPos, groupPos, cntLastGroup);
+				result += recursiveCountSolutions('#', patternPos, groupPos, cntLastGroup);
 			}
 			else {
-				String deb = debugging+c;
-				result = recursiveCountSolutions(c, patternPos, groupPos, cntLastGroup, deb);
+				result = recursiveCountSolutions(c, patternPos, groupPos, cntLastGroup);
 			}
 			return result;
 		}
 	
-		private long recursiveCountSolutions(char c, int patternPos, int groupPos, int cntLastGroup, String debugging) {
+		private long recursiveCountSolutions(char c, int patternPos, int groupPos, int cntLastGroup) {
 //			System.out.println("POS: "+patternPos+" CHAR: "+c+" GROUPS:"+showInts(groups, 0, groupPos));
 //			System.out.println(new String(pattern, 0, patternPos) + "[" + c + "]" + new String(pattern, patternPos+1, pattern.length-patternPos-1));
 //			System.out.println(debugging + " | " + new String(pattern, patternPos+1, pattern.length-patternPos-1));
@@ -126,12 +126,12 @@ public class Y23Day12 {
 			
 			if (c=='.') {
 				if (cntLastGroup == 0) {
-					return recursiveCountSolutions(patternPos+1, groupPos, 0, debugging);
+					return recursiveCountSolutions(patternPos+1, groupPos, 0);
 				}
 				if (groups[groupPos-1] != cntLastGroup) {
 					return 0;
 				}
-				return recursiveCountSolutions(patternPos+1, groupPos, 0, debugging);
+				return recursiveCountSolutions(patternPos+1, groupPos, 0);
 			}
 			if (c!='#') {
 				throw new RuntimeException("invalid pattern '"+c+"' at pos "+patternPos);
@@ -140,12 +140,12 @@ public class Y23Day12 {
 				if (groupPos == groups.length) {
 					return 0;
 				}
-				return recursiveCountSolutions(patternPos+1, groupPos+1, 1, debugging);
+				return recursiveCountSolutions(patternPos+1, groupPos+1, 1);
 			}
 			if (cntLastGroup>=groups[groupPos-1]) {
 				return 0;
 			}
-			return recursiveCountSolutions(patternPos+1, groupPos, cntLastGroup+1, debugging);
+			return recursiveCountSolutions(patternPos+1, groupPos, cntLastGroup+1);
 		}
 	}
 
@@ -190,27 +190,33 @@ public class Y23Day12 {
 			super(row);
 			cache = new HashMap<>();
 		}
-		@Override protected long recursiveCountSolutions(int patternPos, int groupPos, int cntLastGroup, String debug) {
+		@Override protected long recursiveCountSolutions(int patternPos, int groupPos, int cntLastGroup) {
 			State state = new State(patternPos, groupPos, cntLastGroup);
 			if (cache.containsKey(state)) {
 				return cache.get(state);
 			}
-			long result = super.recursiveCountSolutions(patternPos, groupPos, cntLastGroup, debug);
+			long result = super.recursiveCountSolutions(patternPos, groupPos, cntLastGroup);
 			cache.put(state, result);
 			return result;
 		}
 	}
 
 	public static void mainPart2(String inputFile) {
-		long sumArrangements = 0;
+		
+		List<InputData> datas = new ArrayList<>();
 		for (InputData data:new InputProcessor(inputFile)) {
-			System.out.println(data);
-			BruteForceSolver bfs = new CachedBruteForceSolver(replicate(data.row));
-			long solutions = bfs.countSolutions(replicate(data.damagedSpringGroups));
-			sumArrangements += solutions;
-			System.out.println("SOLUTIONS: "+solutions);
+			datas.add(new InputData(replicate(data.row), replicate(data.damagedSpringGroups)));
 		}
-		System.out.println("SUM ARRANGEMENTS: "+sumArrangements);
+
+		long sumArrangements[] = new long[1];
+		for (int i=0; i<100; i++) {
+			StopWatch12.run("PARALLELCALC", () -> {
+				sumArrangements[0] = datas.parallelStream().mapToLong(data -> {
+					return new CachedBruteForceSolver(data.row).countSolutions(data.damagedSpringGroups);
+				}).sum();
+			});
+		}
+		System.out.println("SUM ARRANGEMENTS: "+sumArrangements[0]);
 	}
 
 
@@ -221,7 +227,7 @@ public class Y23Day12 {
 		System.out.println("---------------");                           
 		System.out.println("--- PART II ---");
 //		mainPart2("exercises/day12/Feri/input-example.txt");
-		mainPart2("exercises/day12/Feri/input.txt");              
+		mainPart2("exercises/day12/Feri/input.txt");
 		System.out.println("---------------");    //
 	}
 	
