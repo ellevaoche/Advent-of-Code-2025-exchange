@@ -227,6 +227,7 @@ public class Y23Day19 {
 			for (Condition condition:rule.conditions) {
 				if (!condition.hasCondition()) {
 					result += recursiveCalcAlternatives(remainingAlts, condition.acceptName);
+					return result;
 				}
 				else {
 					Alternatives conditionAlts = remainingAlts.filterCondition(condition.category, condition.operator, condition.value);
@@ -273,6 +274,14 @@ public class Y23Day19 {
 				result += nr.calcNumberOfAlternatives();
 			}
 			return result;
+		}
+
+		public NumRanges filter(NumRange condNR) {
+			List<NumRange> result = new ArrayList<>();
+			for (NumRange nr:numRanges) {
+				result.addAll(nr.intersect(condNR));
+			}
+			return new NumRanges(result);
 		}}
 	
 	static class Alternatives {
@@ -305,9 +314,9 @@ public class Y23Day19 {
 				condNR = new NumRange(1,value-1);
 			}
 			else {
-				condNR = new NumRange(value, 4000);
+				condNR = new NumRange(value+1, 4000);
 			}
-			NumRanges filteredNRS = condNRS.filter(condNR);
+			NumRanges filteredNRS = currentNRS.filter(condNR);
 			if (filteredNRS.calcNumberOfAlternatives()==0) {
 				return null;
 			}
@@ -348,6 +357,10 @@ public class Y23Day19 {
 		}
 		public long calcNumberOfAlternatives() {
 			return xAlternatives.calcNumberOfAlternatives() * mAlternatives.calcNumberOfAlternatives() * aAlternatives.calcNumberOfAlternatives() * sAlternatives.calcNumberOfAlternatives(); 
+		}
+		@Override
+		public String toString() {
+			return "x:"+xAlternatives+", m:"+mAlternatives+", a:"+aAlternatives+", s:"+sAlternatives;
 		}
 	}
 	
@@ -398,8 +411,8 @@ public class Y23Day19 {
 		System.out.println("--- PART II ---");
 		URL url;
 		System.out.println("--- PART I ---");
-		mainPart2("exercises/day19/Feri/input-example.txt");
-//		mainPart2("exercises/day19/Feri/input.txt");
+//		mainPart2("exercises/day19/Feri/input-example.txt");
+		mainPart2("exercises/day19/Feri/input.txt");
 		System.out.println("---------------");    
 	}
 	
