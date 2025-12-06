@@ -49,9 +49,11 @@ typedef off_t pos;
 typedef uint16_t num;
 
 struct data {
-	size_t line_len;
+	size_t column_count;
 	size_t line_count;
+	size_t line_length;
 	size_t line_alloc;
+	char *lines2;
 	num *lines;
 	_Bool *ops_multiply;
 	uint64_t *solutions;
@@ -91,20 +93,64 @@ static void print(FILE *str, struct data *data, uint64_t result) {
 	fputs(interactive ? STEP_FINISHED : RESET, str);
 }
 
+static num parse_num(struct data *data, idx ci) {
+	num result = 0;
+	int any_input = 0;
+	int last_input = 0;
+	for (idx l = 0; l < data->line_count; ++l) {
+		char chr = data->lines2[l * data->line_length + ci];
+		if (chr >= '0' && chr <= '9') {
+			if (!any_input) {
+				any_input = 1;
+				last_input = 1;
+			} else if (!last_input)
+				abort();
+			result = result * 10 + chr - '0';
+		} else
+			last_input = 0;
+	}
+	if (any_input)
+		return result;
+	return NUM_MAX;
+}
+
 const char* solve(const char *path) {
 	struct data *data = read_data(path);
 	uint64_t result = 0;
-	for (idx c = 0; c < data->line_len; ++c) {
-		uint64_t solution = data->ops_multiply[c];
-		for (idx l = 0; l < data->line_count; ++l) {
-			if (data->ops_multiply[c])
-				solution *= data->lines[l * data->line_len + c];
-			else
-				solution += data->lines[l * data->line_len + c];
+	if (part == 1) {
+		for (idx c = 0; c < data->column_count; ++c) {
+			uint64_t solution = data->ops_multiply[c];
+			for (idx l = 0; l < data->line_count; ++l) {
+				if (data->ops_multiply[c])
+					solution *= data->lines[l * data->column_count + c];
+				else
+					solution += data->lines[l * data->column_count + c];
+			}
+			result += solution;
+			data->solutions[c] = solution;
+			print(solution_out, data, result);
 		}
-		result += solution;
-		data->solutions[c] = solution;
-		print(solution_out, data, result);
+	} else {
+		for (idx cn = 0, ci = 0; cn < data->column_count; ++cn) {
+			uint64_t solution = data->ops_multiply[cn];
+			int had_valid = 0;
+			for (; 119; ++ci) {
+				num num = parse_num(data, ci);
+				if (num == NUM_MAX) {
+					if (had_valid)
+						break;
+					continue;
+				}
+				had_valid = 1;
+				if (data->ops_multiply[cn])
+					solution *= num;
+				else
+					solution += num;
+			}
+			result += solution;
+			data->solutions[cn] = solution;
+			print(solution_out, data, result);
+		}
 	}
 	print(solution_out, data, result);
 	free(data);
@@ -119,7 +165,7 @@ static struct data* parse_line(struct data *data, char *line) {
 	if (!data) {
 		data = calloc(1, sizeof(struct data));
 	}
-	if (!data->line_len) {
+	if (!data->column_count) {
 		char *p = line;
 		do {
 			char *end;
@@ -129,19 +175,36 @@ static struct data* parse_line(struct data *data, char *line) {
 			p = end;
 			for (; *p && isspace(*p); ++p)
 				;
-			data->line_len++;
+			data->column_count++;
 		} while (*p);
 	}
 	if (data->line_count == data->line_alloc) {
 		data->line_alloc += 64;
 		data->lines = reallocarray(data->lines, data->line_alloc,
-				data->line_len * sizeof(num));
+				data->column_count * sizeof(num));
+		data->lines2 = reallocarray(data->lines2, data->line_alloc,
+				data->line_length);
 	}
 	if (data->ops_multiply)
 		abort();
 	char *p = line;
 	if (*line != '*' && *line != '+') {
-		for (idx i = 0; i < data->line_len; ++i) {
+		size_t ll = strlen(line);
+		if (ll > data->line_length) {
+			data->lines2 = reallocarray(data->lines2, data->line_alloc, ll);
+			for (int l = data->line_count; --l >= 0;) {
+				memmove(data->lines2 + l * ll,
+						data->lines2 + l * data->line_length,
+						data->line_length);
+				memset(data->lines2 + l * ll + data->line_length, ' ',
+						ll - data->line_length);
+			}
+			data->line_length = ll;
+		}
+		memcpy(data->lines2 + data->line_count * data->line_length, line, ll);
+		memset(data->lines2 + data->line_count * data->line_length + ll, ' ',
+				data->line_length - ll);
+		for (idx i = 0; i < data->column_count; ++i) {
 			char *end;
 			long long val = strtoll(p, &end, 10);
 			if (errno || p == end)
@@ -151,13 +214,13 @@ static struct data* parse_line(struct data *data, char *line) {
 				;
 			if (val < 0 || val >= NUM_MAX)
 				abort();
-			data->lines[data->line_count * data->line_len + i] = val;
+			data->lines[data->line_count * data->column_count + i] = val;
 		}
 		data->line_count++;
 	} else {
-		data->ops_multiply = malloc(data->line_len);
-		data->solutions = calloc(data->line_len, sizeof(uint64_t));
-		for (idx i = 0; i < data->line_len; ++i) {
+		data->ops_multiply = malloc(data->column_count);
+		data->solutions = calloc(data->column_count, sizeof(uint64_t));
+		for (idx i = 0; i < data->column_count; ++i) {
 			data->ops_multiply[i] = *p == '*' ? 1 :
 									*p == '+' ? 0 : (abort(), 0);
 			for (++p; *p && isspace(*p); ++p)
