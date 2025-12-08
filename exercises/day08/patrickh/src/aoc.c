@@ -191,11 +191,11 @@ static uint64_t calc(struct data *data, struct connection *conns,
 	return result;
 }
 
-const char* solve(const char *path) {
-	struct data *data = read_data(path);
+static uint64_t solve_p1(struct data *data) {
 	uint64_t result = 0;
 	size_t conn_max_size = is_test_data ? 10 : 1000;
-	struct connection *conns = malloc(sizeof(struct connection) * conn_max_size);
+	struct connection *conns = malloc(
+			sizeof(struct connection) * conn_max_size);
 	size_t conns_size = 0;
 	print(solution_out, data, result, conns, conns_size);
 	for (idx ai = 0; ai + 1 < data->box_count; ++ai) {
@@ -220,22 +220,103 @@ const char* solve(const char *path) {
 			}
 			if (conns_size != conn_max_size)
 				conns_size++;
+
 			size_t cpy = conns + conns_size - low - 1;
 			if (low != conns + conns_size) {
-
 				memmove(low + 1, low, cpy * sizeof(struct connection));
 				low->a = ai;
 				low->b = bi;
 				low->distance = dist;
-//				if (do_print || interactive)
-//					result = calc(data, conns, conns_size);
-//				print(solution_out, data, result, conns, conns_size);
+				//				if (do_print || interactive)
+				//					result = calc(data, conns, conns_size);
+				//				print(solution_out, data, result, conns, conns_size);
 			}
 		}
 	}
 	result = calc(data, conns, conns_size);
 	print(solution_out, data, result, conns, conns_size);
 	free(conns);
+	return result;
+}
+
+struct distarg {
+	struct junction_box *other;
+	long double dist;
+	struct junction_box *result;
+};
+
+static int v_dist(void *arg0, void *element) {
+	struct distarg *arg = arg0;
+	struct junction_box *jb = element;
+	if (jb == arg->other)
+		return 0;
+	pos diffx = jb->x - arg->other->x;
+	pos diffy = jb->y - arg->other->y;
+	pos diffz = jb->z - arg->other->z;
+	long double dist = sqrt(diffx * diffx + diffy * diffy + diffz * diffz);
+	if (!arg->result || dist < arg->dist) {
+		arg->dist = dist;
+		arg->result = jb;
+	}
+	return 0;
+}
+
+struct p2arg {
+	struct hashset connected;
+	struct hashset unconnected;
+	long double dist;
+	struct junction_box *min_src;
+	struct junction_box *min_dst;
+};
+
+static int v_visitp2(void *arg0, void *element) {
+	struct p2arg *arg = arg0;
+	struct junction_box *jb = element;
+	struct hashset *search = &arg->connected;
+	if (!arg->connected.entry_count)
+		search = &arg->unconnected;
+	struct distarg darg = { .other = jb, .dist = arg->dist, .result = arg->min_src };
+	hs_for_each(search, &darg, v_dist);
+	if (darg.result != arg->min_src) {
+		arg->dist = darg.dist;
+		arg->min_src = darg.result;
+		arg->min_dst = jb;
+	}
+	return 0;
+}
+
+static uint64_t solve_p2(struct data *data) {
+	struct p2arg arg = { .connected.equal = jbeq, .connected.hash = jbhs,
+			.unconnected.equal = jbeq, .unconnected.hash = jbhs, };
+	for (idx i = 0; i < data->box_count; ++i)
+		hs_add(&arg.unconnected, data->boxes + i);
+	idx i = 0;
+	do {
+		arg.min_src = NULL;
+		arg.min_dst = NULL;
+		hs_for_each(&arg.unconnected, &arg, v_visitp2);
+		hs_add(&arg.connected, arg.min_dst);
+		hs_remove(&arg.unconnected, arg.min_dst);
+		fprintf(solution_out,
+				"conn[%3"I64"u]: (%6"I64"d,%6"I64"d,%6"I64"d) <== "
+				/*		*/"%-7.6Lg ==> (%6"I64"d,%6"I64"d,%6"I64"d) (%"I64"u connected and %"I64"u unconnected)\n",
+				(uint64_t) i, (int64_t) arg.min_src->x,
+				(int64_t) arg.min_src->y, (int64_t) arg.min_src->z, arg.dist,
+				(int64_t) arg.min_dst->x, (int64_t) arg.min_dst->y,
+				(int64_t) arg.min_dst->z, (uint64_t) arg.connected.entry_count,
+				(uint64_t) arg.unconnected.entry_count);
+		++i;
+	} while (arg.unconnected.entry_count);
+	return arg.min_src->x * arg.min_dst->x;
+}
+
+const char* solve(const char *path) {
+	struct data *data = read_data(path);
+	uint64_t result = 0;
+	if (part == 1)
+		result = solve_p1(data);
+	else
+		result = solve_p2(data);
 	free(data);
 	return u64toa(result);
 }
