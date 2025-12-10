@@ -56,18 +56,18 @@
 #	error "i don't know what the I64 type looks like! 37"
 #endif
 
-#define Z "z"
+#define ZMOD "z"
 #ifdef _WIN32
 #	ifndef __STDC_NO_THREADS__
 #		define __STDC_NO_THREADS__
 #	endif
 #	undef I64
-#	undef Z
+#	undef ZMOD
 #	define I64 "I64"
 #	ifdef _WIN64
-#		define Z I64
+#		define ZMOD I64
 #	else
-#		define Z "l"
+#		define ZMOD "l"
 #	endif
 #endif // _WIN32
 

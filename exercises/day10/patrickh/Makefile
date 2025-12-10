@@ -16,7 +16,7 @@ else
 endif
 
 CFLAGS += -Wall -Wstrict-overflow=5 -pedantic
-LDFLAGS += -lm
+LDFLAGS += -lm -lgsl -lgslcblas
 
 BIN_ROOT = bin/
 

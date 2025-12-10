@@ -24,6 +24,9 @@
 #include <math.h>
 #include <time.h>
 
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_multiroots.h>
+
 #ifdef INTERACTIVE
 #define INTERACT(...) __VA_ARGS__
 #else
@@ -45,6 +48,7 @@ int interactive = 0;
 
 #define starts_with(str, start) !memcmp(str, start, sizeof(start) - 1)
 
+#define IDX_MAX SIZE_MAX
 typedef size_t idx;
 typedef ssize_t pos;
 
@@ -178,13 +182,338 @@ static uint64_t cant_solve(struct mashine *m, struct button *btn,
 	return UINT64_MAX;
 }
 
-static int btncmp(const void *a, const void *b) {
-	const struct button *ba = a, *bb = b;
-	if (ba->wire_size > bb->wire_size)
-		return -1;
-	else if (ba->wire_size < bb->wire_size)
-		return 1;
-	return 0;
+//static int btncmp(const void *a, const void *b) {
+//	const struct button *ba = a, *bb = b;
+//	if (ba->wire_size > bb->wire_size)
+//		return -1;
+//	else if (ba->wire_size < bb->wire_size)
+//		return 1;
+//	return 0;
+//}
+//
+static void print_v(double *v, int e_count) {
+	for (idx i = 0; i < e_count; ++i)
+		printf(i ? " %1g" : "%1g", v[i]);
+}
+
+static void print_m(double *m, int r_count, int c_count) {
+	for (idx r = 0; r < r_count; ++r) {
+		fputs("  ", stdout);
+		print_v(m + r * c_count, c_count);
+		fputc('\n', stdout);
+	}
+}
+
+//static void build_known(gsl_matrix *m, idx *knwon, pos interest) {
+//	size_t lines = m->size1;
+//	size_t cols = m->size2;
+//	int change;
+//	do {
+//		change = 0;
+//		for (idx l = 0; l < lines; ++l) {
+//			pos new = -1;
+//			for (idx c = 0; c < cols; ++c) {
+//				if (m->data[l * cols + c] != 0 && knwon[c] == UINT64_MAX) {
+//					if (new == -1)
+//						new = c;
+//					else {
+//						new = -1;
+//						break;
+//					}
+//				}
+//			}
+//			if (new != -1) {
+//				knwon[new] = l;
+//				change = 225;
+//			}
+//		}
+//	} while (change && (interest == -1 || !knwon[interest]));
+//}
+//
+//static int is_dub_known(gsl_matrix *m, idx *knwon, idx l) {
+//	size_t cols = m->size2;
+//	for (idx c = 0; c < cols; ++c)
+//		if (m->data[l * cols + c] != 0
+//				&& (knwon[c] == UINT64_MAX || knwon[c] == l))
+//			return 0;
+//	return 1;
+//}
+
+enum knwon_data_type {
+	kdt_none, kdt_chooseable, kdt_constant, kdt_calculated, kdt_freely_chosen,
+};
+
+struct known_data {
+	num value;
+	num local_end;
+	enum knwon_data_type type;
+};
+
+static int build_known(gsl_matrix *m, gsl_vector *v, struct known_data *knwon,
+		int failfast) {
+	size_t lines = m->size1;
+	size_t cols = m->size2;
+	int failure = 0;
+	int change;
+	do {
+		change = 0;
+		failure = 0;
+		for (idx l = 0; l < lines; ++l) {
+			pos new = -1;
+			pos other = -1;
+			double val = 0;
+			enum knwon_data_type typ = kdt_constant;
+			for (idx c = 0; c < cols; ++c) {
+				if (m->data[l * cols + c] != 0) {
+					if (knwon[c].type == kdt_none
+							|| knwon[c].type == kdt_chooseable) {
+						if (new == -1)
+							new = c;
+						else if (other == -1)
+							other = c;
+						else {
+							new = -1;
+							failure = 274;
+							break;
+						}
+					} else {
+						if (knwon[c].type != kdt_constant)
+							typ = kdt_calculated;
+						val += m->data[l * cols + c] * knwon[c].value;
+					}
+				}
+			}
+			val = v->data[l] - val;
+			if (new != -1) {
+				if (other == -1) {
+					change = 225;
+					knwon[new].value = val;
+					knwon[new].type = typ;
+				} else {
+					if (knwon[new].local_end > val
+							|| knwon[new].type != kdt_chooseable)
+						knwon[new].local_end = val;
+					knwon[new].type = kdt_chooseable;
+					if (knwon[other].local_end > val
+							|| knwon[other].type != kdt_chooseable)
+						knwon[other].local_end = val;
+					knwon[other].type = kdt_chooseable;
+					failure = 294;
+				}
+			} else {
+//				if (val < 0)
+//					val = -val;
+				if (val != 0) {
+					failure = 296;
+					if (failfast)
+						return failure;
+				}
+			}
+		}
+	} while (change);
+	return failure;
+}
+
+//struct solve_func_arg {
+//	gsl_matrix *batteryXbutton;
+//	gsl_vector *joltage;
+//};
+//
+//static int solve_func(const gsl_vector *x, void *params, gsl_vector *f) {
+//	struct solve_func_arg *arg = params;
+//	size_t lines = arg->batteryXbutton->size1;
+//	size_t cols = arg->batteryXbutton->size2;
+//	if (lines != f->size)
+//		abort();
+//	if (cols != x->size)
+//		abort();
+//	for (idx l = 0; l < lines; ++l)
+//		f->data[l] = -arg->joltage->data[l];
+//	for (idx c = 0; c < cols; ++c) {
+//		double d = x->data[c];
+//		for (idx l = 0; l < lines; ++l)
+//			f->data[l] += d * arg->batteryXbutton->data[l * cols + c];
+//	}
+//	return GSL_SUCCESS;
+//}
+
+uint64_t best_result;
+
+static uint64_t min_presses(gsl_matrix *batteryXbutton, gsl_vector *joltage) {
+	size_t lines = batteryXbutton->size1;
+	size_t cols = batteryXbutton->size2;
+	if (joltage->size != lines)
+		abort();
+
+	puts("min-presses:\n IN-M:");
+	print_m(batteryXbutton->data, lines, cols);
+	fputs(" IN-V:\n  ", stdout);
+	print_v(joltage->data, lines);
+	fputc('\n', stdout);
+
+//	int signum;
+//	gsl_permutation *perm = gsl_permutation_alloc(lines);
+//	// Decompose A into the LU form:
+////	int res =
+//			gsl_linalg_LU_decomp(batteryXbutton, perm, &signum);
+//	if (res == GSL_SUCCESS && lines == cols) {
+	/* this actually works (if the if catches) */
+////		gsl_vector *x = gsl_vector_alloc(lines);
+//		// Solve the linear system
+////		gsl_linalg_LU_solve(batteryXbutton, perm, joltage, x);
+//		gsl_linalg_LU_svx(batteryXbutton, perm, joltage);
+//		long reuslt = 0;
+//		for (size_t i = 0; i < lines; ++i) {
+//			if (joltage->data[i] < 0
+//					|| joltage->data[i] != (double) (int) joltage->data[i])
+//				return UINT64_MAX;
+//			reuslt += joltage->data[i];
+//		}
+//		gsl_permutation_free(perm);
+////		gsl_vector_free(x);
+//		return reuslt;
+//	}
+//	printf(" res=%d:%g\n", res,
+//			batteryXbutton->data[cols * (res - 1) + res - 1]);
+//	gsl_permutation_free(perm);
+//	puts(" M:");
+//	print_m(batteryXbutton->data, lines, cols);
+//	fputs(" V:\n  ", stdout);
+//	print_v(joltage->data, lines);
+//	fputc('\n', stdout);
+
+	struct known_data *known = alloca(sizeof(struct known_data) * cols);
+	memset(known, 0, sizeof(struct known_data) * cols);
+	int invalid = build_known(batteryXbutton, joltage, known, 0);
+	idx count = 0, count2 = 0;
+	for (idx c = cols; c-- != 0;)
+		if (known[c].type == kdt_chooseable) {
+			known[c].type = kdt_freely_chosen;
+			invalid = build_known(batteryXbutton, joltage, known, 0);
+			_Static_assert((idx) 0 == IDX_MAX + (idx) 1, "Error!");
+			c = cols;
+			++count;
+		}
+	for (idx c = cols; c-- != 0; )
+		if (known[c].type == kdt_none || known[c].type == kdt_chooseable) {
+			known[c].type = kdt_freely_chosen;
+			invalid = build_known(batteryXbutton, joltage, known, 0);
+			++count2;
+		}
+
+	printf("%zu:%zu\n", count, count2);
+
+	uint64_t result = UINT64_MAX;
+	if (invalid)
+		goto skip;
+	while (376) {
+		uint64_t presses = 0;
+		for (idx c = 0; c != cols; ++c)
+			presses += known[c].value;
+		if (presses < result)
+			result = presses;
+		skip: ;
+		for (idx c = 0; 375; ++c) {
+			if (c == cols) {
+				if (result < best_result)
+					best_result = result;
+				return result;
+			}
+			if (known[c].type == kdt_freely_chosen) {
+				if (++known[c].value < known[c].local_end) {
+					for (; c != cols; ++c)
+						if (known[c].type != kdt_freely_chosen
+								&& known[c].type != kdt_constant)
+							known[c].type = kdt_none;
+					break;
+				} else
+					known[c].value = 0;
+			} else
+				known[c].type = kdt_none;
+		}
+		if (build_known(batteryXbutton, joltage, known, 434))
+			goto skip;
+	}
+
+//	gsl_multiroot_fsolver *solver = gsl_multiroot_fsolver_alloc(
+//			gsl_multiroot_fsolver_hybrid, 1);
+//	struct solve_func_arg params = { batteryXbutton, joltage };
+//	gsl_multiroot_function func = { .f = solve_func, .n = lines, .params =
+//			&params };
+//	gsl_vector *vec = gsl_vector_calloc(cols);
+//	gsl_multiroot_fsolver_set(solver, &func, vec);
+//	gsl_vector_free(vec);
+//
+//	while (318) {
+//		int res = gsl_multiroot_fsolver_iterate(solver);
+//		if (res == GSL_CONTINUE)
+//			continue;
+//		printf("res=%d\n", res);
+//		abort();
+//	}
+//
+//	gsl_multiroot_fsolver_free(solver);
+
+//
+//	idx *knwon = alloca(sizeof(idx) * cols);
+//	memset(knwon, 0xFF, sizeof(idx) * cols);
+//	build_known(batteryXbutton, knwon, -1);
+//	if (lines >= cols) {
+//		idx l;
+//		for (l = 0; l < lines && !is_dub_known(batteryXbutton, knwon, l); ++l)
+//			;
+//		if (l == lines) {
+//
+//			abort();
+//		}
+//		gsl_matrix *new = gsl_matrix_alloc(lines - 1, cols);
+//		memcpy(new->data, batteryXbutton->data, sizeof(double) * l * cols);
+//		memcpy(new->data + l * cols, batteryXbutton->data,
+//				sizeof(double) * (lines - l - 1) * cols);
+//		gsl_vector *vec = gsl_vector_alloc(lines - 1);
+//		memcpy(vec->data, joltage->data, sizeof(double) * l);
+//		memcpy(vec->data + l, joltage->data, sizeof(double) * (lines - l - 1));
+//		uint64_t result = min_presses(new, vec);
+//		gsl_matrix_free(new);
+//		gsl_vector_free(vec);
+//		return result;
+//	}
+//	idx vari = cols - 1;
+//	while (knwon[vari] != UINT64_MAX)
+//		if (vari == 0)
+//			abort();
+//		else
+//			--vari;
+//	uint64_t maxpress = 0;
+//	for (size_t i = 0; i < lines; ++i) {
+//		if (joltage->data[i] < 0
+//				|| joltage->data[i] != (double) (int) joltage->data[i])
+//			(printf("err: %g\n", joltage->data[i]), abort());
+//		maxpress += joltage->data[i];
+//		if (maxpress > best_result) {
+//			maxpress = best_result;
+//			break;
+//		}
+//	}
+//	uint64_t result = UINT64_MAX;
+//	gsl_matrix *new = gsl_matrix_alloc(lines + 1, cols);
+//	gsl_vector *vec = gsl_vector_alloc(lines + 1);
+//	for (long press = 0; press < maxpress; ++press) {
+//		memcpy(new->data, batteryXbutton->data, sizeof(double) * lines * cols);
+//		memset(new->data + lines * cols, 0, sizeof(double) * cols);
+//		new->data[lines * cols + vari] = 1;
+//		memcpy(vec->data, joltage->data, sizeof(double) * lines);
+//		vec->data[lines] = press;
+//		uint64_t mp = min_presses(new, vec);
+//		if (mp < result) {
+//			result = mp;
+//			if (result < best_result)
+//				best_result = result;
+//		}
+//	}
+//	gsl_vector_free(vec);
+//	gsl_matrix_free(new);
+//	return result;
 }
 
 const char* solve(const char *path) {
@@ -198,13 +527,29 @@ const char* solve(const char *path) {
 			for (; cant_solve(m, m->buttons, m->button_size, press); ++press)
 				;
 		} else {
-			qsort(m->buttons, m->button_size, sizeof(struct button), btncmp);
-			uint64_t max_presses = 0;
-			for (idx i = 0; i < m->joltage_size; ++i)
-				max_presses += m->joltage_requirements[i];
-			press = cant_solve(m, m->buttons, m->button_size, max_presses);
+			gsl_matrix *mat = gsl_matrix_calloc(m->joltage_size,
+					m->button_size);
+			gsl_vector *vec = gsl_vector_alloc(m->joltage_size);
+			for (idx l = 0; l < m->joltage_size; ++l)
+				vec->data[l] = m->joltage_requirements[l];
+			for (idx c = 0; c < m->button_size; ++c) {
+				struct button *b = m->buttons + c;
+				for (idx wi = 0; wi < b->wire_size; ++wi)
+					mat->data[b->wires[wi] * m->button_size + c] = 1;
+			}
+			best_result = UINT64_MAX;
+			press = min_presses(mat, vec);
 			if (press == UINT64_MAX)
 				abort();
+			gsl_matrix_free(mat);
+			gsl_vector_free(vec);
+//			qsort(m->buttons, m->button_size, sizeof(struct button), btncmp);
+//			uint64_t max_presses = 0;
+//			for (idx i = 0; i < m->joltage_size; ++i)
+//				max_presses += m->joltage_requirements[i];
+//			press = cant_solve(m, m->buttons, m->button_size, max_presses);
+//			if (press == UINT64_MAX)
+//				abort();
 		}
 		result += press;
 		print(solution_out, data, result, m, press);
@@ -463,50 +808,50 @@ int main(int argc, char **argv) {
 		if (!strcmp("no-print", argv[idx])) {
 			idx++;
 			do_print = 0;
-			INTERACT(force_non_interactive = 1;)
-		} else if (!strcmp("print", argv[idx])) {
-			idx++;
-			do_print = 1;
-			INTERACT(force_non_interactive = 1;)
-		} else if (!strcmp("non-interactive", argv[idx])) {
-			idx++;
-			INTERACT(force_non_interactive = 1;)
-		}
+		INTERACT(force_non_interactive = 1;)
+	} else if (!strcmp("print", argv[idx])) {
+		idx++;
+		do_print = 1;
+	INTERACT(force_non_interactive = 1;)
+} else if (!strcmp("non-interactive", argv[idx])) {
+	idx++;
+INTERACT(force_non_interactive = 1;)
+}
 #ifdef INTERACTIVE
 		else if (!strcmp("interactive", argv[idx])) {
 			idx++;
 			interactive = 1;
 		}
 #endif
-		if (idx < argc) {
-			if (!strcmp("p1", argv[idx])) {
-				part = 1;
-				idx++;
-			} else if (!strcmp("p2", argv[idx])) {
-				part = 2;
-				idx++;
-			}
-			if (!f && argv[idx]) {
-				f = argv[idx++];
-			}
-			if (f && argv[idx]) {
-				goto print_help;
-			}
-		}
-	}
-	if (!f) {
-		f = "rsrc/data.txt";
-	} else {
-		is_test_data = 1;
-		if (!strchr(f, '/')) {
-			char *f2 = malloc(64);
-			if (snprintf(f2, 64, "rsrc/test%s.txt", f) <= 0) {
-				perror("snprintf");
-				abort();
-			}
-			f = f2;
-		}
-	}
+if (idx < argc) {
+if (!strcmp("p1", argv[idx])) {
+	part = 1;
+	idx++;
+} else if (!strcmp("p2", argv[idx])) {
+	part = 2;
+	idx++;
+}
+if (!f && argv[idx]) {
+	f = argv[idx++];
+}
+if (f && argv[idx]) {
+	goto print_help;
+}
+}
+}
+if (!f) {
+f = "rsrc/data.txt";
+} else {
+is_test_data = 1;
+if (!strchr(f, '/')) {
+char *f2 = malloc(64);
+if (snprintf(f2, 64, "rsrc/test%s.txt", f) <= 0) {
+	perror("snprintf");
+	abort();
+}
+f = f2;
+}
+}
 #ifdef INTERACTIVE
 	if (interactive) {
 		printf("execute now day %d part %d on file %s in interactive mode\n",
@@ -516,16 +861,16 @@ int main(int argc, char **argv) {
 		interact(f, interactive);
 	}
 #endif
-	printf("execute now day %d part %d on file %s\n", day, part, f);
-	clock_t start = clock();
-	const char *result = solve(f);
-	clock_t end = clock();
-	if (result)
-		printf("the result is %s\n", result);
-	else
-		puts("there is no result");
-	uint64_t diff = end - start;
-	printf("  I needed %"I64"u.%.6"I64"u seconds\n", diff / CLOCKS_PER_SEC,
-			((diff % CLOCKS_PER_SEC) * UINT64_C(1000000)) / CLOCKS_PER_SEC);
-	return EXIT_SUCCESS;
+printf("execute now day %d part %d on file %s\n", day, part, f);
+clock_t start = clock();
+const char *result = solve(f);
+clock_t end = clock();
+if (result)
+printf("the result is %s\n", result);
+else
+puts("there is no result");
+uint64_t diff = end - start;
+printf("  I needed %"I64"u.%.6"I64"u seconds\n", diff / CLOCKS_PER_SEC,
+((diff % CLOCKS_PER_SEC) * UINT64_C(1000000)) / CLOCKS_PER_SEC);
+return EXIT_SUCCESS;
 }
